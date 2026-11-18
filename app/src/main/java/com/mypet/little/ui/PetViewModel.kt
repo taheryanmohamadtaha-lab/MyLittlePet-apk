@@ -23,6 +23,8 @@ sealed class Screen {
     object Settings : Screen()
     object Shop : Screen()
     object Customize : Screen()
+    object Themes : Screen()
+    object About : Screen()
 }
 
 class PetViewModel(app: Application) : AndroidViewModel(app) {
@@ -39,6 +41,10 @@ class PetViewModel(app: Application) : AndroidViewModel(app) {
         private set
     var appTitle by mutableStateOf("پت کوچولوی من")
         private set
+    var themeId by mutableStateOf("candy")
+        private set
+    var floatingOn by mutableStateOf(false)
+        private set
     var screen by mutableStateOf<Screen>(Screen.Home)
         private set
     var reaction by mutableStateOf(Reaction.NONE)
@@ -50,12 +56,15 @@ class PetViewModel(app: Application) : AndroidViewModel(app) {
     private var bubbleJob: Job? = null
 
     val active: PetState? get() = pets.getOrNull(activeSlot)
+    val theme: AppTheme get() = AppThemes.get(themeId)
     val hasPets: Boolean get() = pets.any { it != null }
 
     init {
         soundOn = store.soundOn
         sound.enabled = soundOn
         appTitle = store.appTitle
+        themeId = store.themeId
+        floatingOn = store.floatingOn
         val now = System.currentTimeMillis()
         pets = store.loadPets().map { p -> p?.let { PetLogic.applyDecay(it, now) } }
         activeSlot = store.activeSlot.coerceIn(0, PetStore.SLOTS - 1)
@@ -161,8 +170,8 @@ class PetViewModel(app: Application) : AndroidViewModel(app) {
             slot = slot,
             characterId = ch.id,
             name = name.trim().ifEmpty { ch.nameFa },
-            bodyColor = ch.defaultBody,
-            eyeColor = ch.defaultEye,
+            bodyColor = 0,
+            eyeColor = 0,
             lastUpdate = System.currentTimeMillis()
         )
         pets = pets.mapIndexed { i, old -> if (i == slot) pet else old }
@@ -223,6 +232,16 @@ class PetViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun firstEmptySlot(): Int = pets.indexOfFirst { it == null }
+
+    fun setTheme(id: String) {
+        themeId = id
+        store.themeId = id
+    }
+
+    fun setFloating(on: Boolean) {
+        floatingOn = on
+        store.floatingOn = on
+    }
 
     fun setSound(on: Boolean) {
         soundOn = on

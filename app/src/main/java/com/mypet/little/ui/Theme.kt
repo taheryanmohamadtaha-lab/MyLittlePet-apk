@@ -34,10 +34,10 @@ private fun Typography.withFont(f: FontFamily) = copy(
 )
 
 @Composable
-fun PetTheme(content: @Composable () -> Unit) {
+fun PetTheme(accent: Color = Color(0xFFFF6FA5), content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = lightColorScheme(
-            primary = Color(0xFFFF6FA5),
+            primary = accent,
             onPrimary = Color.White,
             secondary = Color(0xFF7C9CFF),
             background = Color(0xFFFFF5FA),

@@ -1,5 +1,6 @@
 package com.mypet.little.ui
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -45,6 +46,9 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -52,13 +56,11 @@ import androidx.compose.ui.unit.sp
 import com.mypet.little.characters.CharacterDef
 import com.mypet.little.characters.CharacterRegistry
 import com.mypet.little.characters.Mood
-import com.mypet.little.characters.argb
+import com.mypet.little.R
 import com.mypet.little.data.Action
 import com.mypet.little.data.PetLogic
 import com.mypet.little.data.PetStore
 
-private val BgBrush = Brush.verticalGradient(listOf(Color(0xFFFFF0F7), Color(0xFFE8F4FF)))
-private val Pink = Color(0xFFFF6FA5)
 
 // ------------------------------------------------------------------ اجزای مشترک
 
@@ -75,7 +77,7 @@ private fun Header(title: String, onBack: (() -> Unit)?) {
             )
         }
         Text(
-            title, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Pink,
+            title, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = accentColor(),
             modifier = Modifier
                 .weight(1f)
                 .padding(horizontal = 4.dp)
@@ -88,7 +90,7 @@ private fun Pill(text: String, selected: Boolean, onClick: () -> Unit) {
     Box(
         Modifier
             .clip(RoundedCornerShape(20.dp))
-            .background(if (selected) Pink else Color.White)
+            .background(if (selected) accentColor() else Color.White)
             .clickable { onClick() }
             .padding(horizontal = 14.dp, vertical = 8.dp)
     ) {
@@ -148,12 +150,24 @@ fun HomeScreen(vm: PetViewModel) {
     Column(
         Modifier
             .fillMaxSize()
-            .background(BgBrush)
+            .background(themeBrush())
             .padding(12.dp)
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Image(
+                painter = painterResource(R.drawable.creator_photo),
+                contentDescription = "سازنده",
+                contentScale = ContentScale.Crop,
+                alignment = Alignment.TopCenter,
+                modifier = Modifier
+                    .padding(end = 8.dp)
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .border(2.dp, accentColor(), CircleShape)
+                    .clickable { vm.go(Screen.About) }
+            )
             Text(
-                vm.appTitle, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Pink,
+                vm.appTitle, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = accentColor(),
                 modifier = Modifier.weight(1f)
             )
             Box(
@@ -210,9 +224,6 @@ fun HomeScreen(vm: PetViewModel) {
                 ) {
                     Text(text, fontSize = 14.sp, modifier = Modifier.padding(12.dp), textAlign = TextAlign.Center)
                 }
-            }
-            if (pet.sleeping) {
-                Text("💤", fontSize = 36.sp, modifier = Modifier.align(Alignment.TopEnd))
             }
         }
 
@@ -295,7 +306,7 @@ fun SelectScreen(vm: PetViewModel, slot: Int) {
     Column(
         Modifier
             .fillMaxSize()
-            .background(BgBrush)
+            .background(themeBrush())
             .padding(12.dp)
     ) {
         Header("کاراکترت رو انتخاب کن", if (vm.hasPets) ({ vm.go(Screen.Home) }) else null)
@@ -365,16 +376,48 @@ fun SettingsScreen(vm: PetViewModel) {
     var newName by remember(pet.slot) { mutableStateOf(pet.name) }
     var title by remember { mutableStateOf(vm.appTitle) }
     var confirmDelete by remember { mutableStateOf(false) }
+    var needPermission by remember { mutableStateOf(false) }
+    val ctx = LocalContext.current
 
     Column(
         Modifier
             .fillMaxSize()
-            .background(BgBrush)
+            .background(themeBrush())
             .verticalScroll(rememberScrollState())
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Header("تنظیمات", { vm.go(Screen.Home) })
+
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "🪟 پت شناور روی صفحه گوشی", modifier = Modifier.weight(1f),
+                fontWeight = FontWeight.Bold
+            )
+            Switch(checked = vm.floatingOn, onCheckedChange = { want ->
+                if (want) {
+                    if (FloatingPet.canDraw(ctx)) {
+                        FloatingPet.start(ctx)
+                        vm.setFloating(true)
+                        needPermission = false
+                    } else {
+                        FloatingPet.requestPermission(ctx)
+                        needPermission = true
+                    }
+                } else {
+                    FloatingPet.stop(ctx)
+                    vm.setFloating(false)
+                }
+            })
+        }
+        Text(
+            if (needPermission) "در صفحه‌ای که باز شد، اجازه «نمایش روی سایر برنامه‌ها» را روشن کن، برگرد و دوباره این کلید را بزن."
+            else "پت کوچولو متحرک روی همه برنامه‌ها و صفحه اصلی می‌آید. با انگشت جابه‌جایش کن، یک ضربه = حرف زدن، لمس طولانی = باز شدن برنامه.",
+            fontSize = 12.sp, color = Color(0xFF666666)
+        )
+        Button(onClick = { vm.go(Screen.Themes) }, modifier = Modifier.fillMaxWidth()) {
+            Text("🎨 تم برنامه (${vm.theme.emoji} ${vm.theme.nameFa})")
+        }
 
         Text("اسم پت فعال", fontWeight = FontWeight.Bold)
         OutlinedTextField(
@@ -393,7 +436,10 @@ fun SettingsScreen(vm: PetViewModel) {
         Button(onClick = { vm.setTitle(title) }, modifier = Modifier.fillMaxWidth()) { Text("ذخیره اسم برنامه") }
 
         Button(onClick = { vm.go(Screen.Customize) }, modifier = Modifier.fillMaxWidth()) {
-            Text("🎨 سفارشی‌سازی ظاهر (رنگ، چشم، اکسسوری)")
+            Text("🌈 تغییر رنگ پت")
+        }
+        Button(onClick = { vm.go(Screen.About) }, modifier = Modifier.fillMaxWidth()) {
+            Text("👦 درباره سازنده")
         }
         Button(
             onClick = {
@@ -436,65 +482,140 @@ fun SettingsScreen(vm: PetViewModel) {
     }
 }
 
-// ------------------------------------------------------------------ سفارشی‌سازی
-
-@Composable
-private fun SwatchRow(colors: List<Int>, selected: Int, onPick: (Int) -> Unit) {
-    Row(
-        Modifier.horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        for (c in colors) {
-            Box(
-                Modifier
-                    .size(42.dp)
-                    .clip(CircleShape)
-                    .background(Color(c))
-                    .border(if (c == selected) 3.dp else 1.dp, if (c == selected) Color(0xFF333333) else Color(0x33000000), CircleShape)
-                    .clickable { onPick(c) }
-            )
-        }
-    }
-}
+// ------------------------------------------------------------------ سفارشی‌سازی و تم و سازنده
 
 @Composable
 fun CustomizeScreen(vm: PetViewModel) {
     val pet = vm.active ?: return
     val ch = CharacterRegistry.get(pet.characterId)
-    val eyeColors = listOf(
-        argb(0xFF2A9D8F), argb(0xFF5D4037), argb(0xFFE5446D),
-        argb(0xFFFFB703), argb(0xFF3A86FF), argb(0xFF8338EC)
-    )
-    val accessories = listOf("هیچی", "🎀 پاپیون", "🎉 کلاه", "🕶️ عینک")
+    val hues = listOf(0, 45, 90, 150, 200, 260, 310)
+    val current = PetSprites.hueOf(pet.bodyColor)
 
     Column(
         Modifier
             .fillMaxSize()
-            .background(BgBrush)
+            .background(themeBrush())
             .verticalScroll(rememberScrollState())
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Header("سفارشی‌سازی ${pet.name}", { vm.go(Screen.Settings) })
+        Header("رنگ ${pet.name}", { vm.go(Screen.Settings) })
         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
             PetView(
                 character = ch, stage = maxOf(pet.stage, 2), tier = PetLogic.tier(pet),
-                mood = Mood.HAPPY, bodyColor = pet.bodyColor, eyeColor = pet.eyeColor,
-                accessory = pet.accessory, modifier = Modifier.size(220.dp)
+                mood = Mood.HAPPY, bodyColor = current, eyeColor = 0,
+                accessory = 0, modifier = Modifier.size(240.dp)
             )
         }
-        Text("رنگ بدن", fontWeight = FontWeight.Bold)
-        SwatchRow(ch.bodyPalette, pet.bodyColor) { vm.customize(body = it) }
-        Text("رنگ چشم", fontWeight = FontWeight.Bold)
-        SwatchRow(eyeColors, pet.eyeColor) { vm.customize(eye = it) }
-        Text("اکسسوری", fontWeight = FontWeight.Bold)
+        Text("یکی از رنگ‌ها را انتخاب کن:", fontWeight = FontWeight.Bold)
         Row(
             Modifier.horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            accessories.forEachIndexed { i, label ->
-                Pill(label, pet.accessory == i) { vm.customize(accessory = i) }
+            for (h in hues) {
+                Box(
+                    Modifier
+                        .size(78.dp)
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(Color.White)
+                        .border(
+                            if (h == current) 3.dp else 1.dp,
+                            if (h == current) accentColor() else Color(0x22000000),
+                            RoundedCornerShape(18.dp)
+                        )
+                        .clickable { vm.customize(body = h) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    PetView(
+                        character = ch, stage = 2, tier = 1, mood = Mood.HAPPY,
+                        bodyColor = h, eyeColor = 0, accessory = 0, modifier = Modifier.size(66.dp)
+                    )
+                }
             }
+        }
+    }
+}
+
+@Composable
+fun ThemesScreen(vm: PetViewModel) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .background(themeBrush())
+            .verticalScroll(rememberScrollState())
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Header("🎨 تم برنامه", { vm.go(Screen.Settings) })
+        Text("تم دلخواهت را انتخاب کن؛ بلافاصله اعمال می‌شود.", fontSize = 13.sp)
+        for (t in AppThemes.all) {
+            val selected = t.id == vm.themeId
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(Brush.verticalGradient(listOf(t.top, t.bottom)))
+                    .border(
+                        if (selected) 3.dp else 1.dp,
+                        if (selected) t.accent else Color(0x22000000),
+                        RoundedCornerShape(18.dp)
+                    )
+                    .clickable { vm.setTheme(t.id) }
+                    .padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(t.emoji, fontSize = 28.sp)
+                Text(
+                    t.nameFa, fontWeight = FontWeight.Bold, fontSize = 17.sp,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 10.dp)
+                )
+                Box(
+                    Modifier
+                        .size(26.dp)
+                        .clip(CircleShape)
+                        .background(t.accent)
+                )
+                if (selected) Text("  ✅", fontSize = 18.sp)
+            }
+        }
+    }
+}
+
+@Composable
+fun AboutScreen(vm: PetViewModel) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .background(themeBrush())
+            .verticalScroll(rememberScrollState())
+            .padding(12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Header("درباره سازنده", { vm.go(if (vm.hasPets) Screen.Settings else Screen.Home) })
+        Spacer(Modifier.height(8.dp))
+        Image(
+            painter = painterResource(R.drawable.creator_photo),
+            contentDescription = "محمدطاها طاهریان",
+            contentScale = ContentScale.Crop,
+            alignment = Alignment.TopCenter,
+            modifier = Modifier
+                .size(220.dp)
+                .clip(CircleShape)
+                .border(5.dp, accentColor(), CircleShape)
+        )
+        Text("محمدطاها طاهریان", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        Text("سازنده برنامه", fontSize = 15.sp, color = accentColor(), fontWeight = FontWeight.Bold)
+        Surface(
+            shape = RoundedCornerShape(20.dp), color = Color.White, shadowElevation = 3.dp,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                "«${vm.appTitle}» با عشق برای همه پت‌دوست‌ها ساخته شده است 🐱🐶🐰🐲\nنسخه ۱٫۰",
+                modifier = Modifier.padding(16.dp), textAlign = TextAlign.Center, fontSize = 14.sp
+            )
         }
     }
 }
@@ -507,7 +628,7 @@ fun ShopScreen(vm: PetViewModel) {
     Column(
         Modifier
             .fillMaxSize()
-            .background(BgBrush)
+            .background(themeBrush())
             .verticalScroll(rememberScrollState())
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)

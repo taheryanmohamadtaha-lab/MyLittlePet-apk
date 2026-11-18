@@ -46,6 +46,30 @@ class PetStore(context: Context) {
             prefs.edit().putString("title", v).apply()
         }
 
+    var themeId: String
+        get() = prefs.getString("theme", "candy") ?: "candy"
+        set(v) {
+            prefs.edit().putString("theme", v).apply()
+        }
+
+    var floatingOn: Boolean
+        get() = prefs.getBoolean("floating", false)
+        set(v) {
+            prefs.edit().putBoolean("floating", v).apply()
+        }
+
+    var overlayX: Int
+        get() = prefs.getInt("ovx", 40)
+        set(v) {
+            prefs.edit().putInt("ovx", v).apply()
+        }
+
+    var overlayY: Int
+        get() = prefs.getInt("ovy", 400)
+        set(v) {
+            prefs.edit().putInt("ovy", v).apply()
+        }
+
     var unlocked: Set<String>
         get() = prefs.getStringSet("unlocked", emptySet())?.toSet() ?: emptySet()
         set(v) {
